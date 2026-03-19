@@ -1,0 +1,119 @@
+# version: "3.1"
+services:
+  webserver:
+    # environment:
+    #   - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    #   - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      # - ENDPOINT=${ENDPOINT}
+    networks:
+      - ndsnet
+
+  scheduler:
+    # environment:
+    #   - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+    #   - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      # - ENDPOINT=${ENDPOINT}
+    networks:
+      - ndsnet
+
+  triggerer:
+    networks:
+      - ndsnet
+
+  minio:
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
+    container_name: minio
+    hostname: minio
+    restart: always
+    volumes:
+      - ./include/data/minio:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+    env_file:
+      - .env  
+    # environment:
+    #   MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+    #   MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - ndsnet
+
+  # --- 2. 數據倉儲層 (PostgreSQL for Power BI) ---
+  postgres-realestate:
+    image: postgres:15-alpine
+    # setting a hostname
+    hostname: mypostgres
+    container_name: mypostgres
+    env_file:
+      - .env
+    # environment:
+    #   - POSTGRES_USER=${POSTGRES_USER}
+    #   - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    #   - POSTGRES_DB=mydb
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./data/postgres_dw:/var/lib/postgresql/data
+    networks:
+      - ndsnet
+
+  spark-master:
+    image: airflow/spark-master
+    build: ./spark/master
+    container_name: spark-master
+    ports:
+      - "8082:8080"
+      - "7077:7077"
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
+      - SPARK_CLASSPATH=/spark/jars/extra/postgresql-42.5.0.jar
+    volumes:
+      - ./docker/jars:/spark/jars/extra
+    networks:
+      - ndsnet
+
+  spark-worker:
+    image: airflow/spark-worker
+    build: ./spark/worker
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    environment:
+      - "SPARK_MASTER=spark://spark-master:7077"
+      - SPARK_CLASSPATH=/spark/jars/extra/postgresql-42.5.0.jar
+    volumes:
+      - ./docker/jars:/spark/jars/extra
+    networks:
+      - ndsnet
+
+  metabase:
+    image: metabase/metabase:v0.52.8.4
+    restart: always
+    ports:
+      - 3000:3000
+    volumes:
+      - ./include/data/metabase:/metabase-data
+    networks:
+      - ndsnet
+
+  docker-proxy:
+    image: alpine/socat
+    command: "TCP4-LISTEN:2375,fork,reuseaddr UNIX-CONNECT:/var/run/docker.sock"
+    ports:
+      - "2376:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - ndsnet
+
+networks:
+  ndsnet:
+    driver: bridge

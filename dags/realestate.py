@@ -2,6 +2,8 @@ from airflow.decorators import dag, task_group, task
 from airflow.operators.python import PythonOperator
 from pendulum import datetime, duration
 from airflow.exceptions import AirflowFailException
+from airflow.utils.task_group import TaskGroup
+
 
 # from include.realestate import _crawl_and_download_zip
 # from include.realestate import _extract_zip_file
@@ -89,13 +91,21 @@ def _extract_zip_file(ti=None):
         # with zipfile.ZipFile(file_name,"r") as zip_ref:
         zip_ref.extractall(folder)
 
-    csv_file_path = os.path.join(folder, "a_lvr_land_a.csv")
+    taipei_csv_file_path = os.path.join(folder, "a_lvr_land_a.csv")
+
+    new_taipei_csv_file_path = os.path.join(folder, "f_lvr_land_a.csv")
+
+    taoyuan_csv_file_path = os.path.join(folder, "h_lvr_land_a.csv")
     # print(f"here is the csv file path {csv_file_path}")
 
     # push unzipped file path
     # print(f"folder: {folder}  path : {path}")
     # ti.xcom_push(key="csv_file_path", value=csv_file_path)
-    return csv_file_path
+    return {
+        "taipei_file_path": taipei_csv_file_path,
+        "new_taipei_file_path": new_taipei_csv_file_path,
+        "taoyuan_file_path": taoyuan_csv_file_path,
+    }
     # ti.xcom_push(key='folder',value=folder)
 
 
@@ -111,7 +121,8 @@ def _get_minio_client():
 
 
 # def _store_prices():   only for testing minio connection
-def _store_prices(file_path):
+# def _store_prices(file_path):
+def _store_prices_taipei(ti=None):    
     client = _get_minio_client()
     # Make the bucket if it doesn't exist.
     if not client.bucket_exists(BUCKET_NAME):
@@ -121,10 +132,11 @@ def _store_prices(file_path):
         print(f"Bucket {BUCKET_NAME} already exists")
 
     # The file to upload, change this path if needed
-    source_file = file_path
+    data = ti.xcom_pull(task_ids="extract_zip_file")
+    source_file = data["taipei_file_path"]
     #  source_file = "/tmp/test-file.txt"
 
-    destination_file = file_path
+    destination_file = data["taipei_file_path"]
     # print(f"here is the source_file  {source_file}  here is the destination_file {destination_file}")
     #     # Upload the file, renaming it in the process
     client.fput_object(
@@ -139,6 +151,56 @@ def _store_prices(file_path):
     #     here is the source_file  real_estate1144/a_lvr_land_a.csv
     #  here is the destination_file real_estate1144/a_lvr_land_a.csv
     # return source_file
+    return f"realestate-market/{destination_file}"
+
+
+def _store_prices_new_taipei(ti=None):    
+    client = _get_minio_client()
+    # Make the bucket if it doesn't exist.
+    if not client.bucket_exists(BUCKET_NAME):
+        client.make_bucket(BUCKET_NAME)
+        print(f"Created bucket{BUCKET_NAME}")
+    else:
+        print(f"Bucket {BUCKET_NAME} already exists")
+
+    # The file to upload, change this path if needed
+    data = ti.xcom_pull(task_ids="extract_zip_file")
+    source_file = data["new_taipei_file_path"]
+    destination_file = data["new_taipei_file_path"]
+
+    client.fput_object(
+        bucket_name=BUCKET_NAME,
+        object_name=destination_file,
+        file_path=source_file,
+    )
+    print(
+        f"{source_file} successfully uploaded as object{destination_file} to bucket {BUCKET_NAME}"
+    )
+    return f"realestate-market/{destination_file}"
+
+
+def _store_prices_taoyuan(ti=None):
+    client = _get_minio_client()
+    # Make the bucket if it doesn't exist.
+    if not client.bucket_exists(BUCKET_NAME):
+        client.make_bucket(BUCKET_NAME)
+        print(f"Created bucket{BUCKET_NAME}")
+    else:
+        print(f"Bucket {BUCKET_NAME} already exists")
+
+    # The file to upload, change this path if needed
+    data = ti.xcom_pull(task_ids="extract_zip_file")
+    source_file = data["taoyuan_file_path"]
+    destination_file = data["taoyuan_file_path"]
+
+    client.fput_object(
+        bucket_name=BUCKET_NAME,
+        object_name=destination_file,
+        file_path=source_file,
+    )
+    print(
+        f"{source_file} successfully uploaded as object{destination_file} to bucket {BUCKET_NAME}"
+    )
     return f"realestate-market/{destination_file}"
 
 
@@ -175,14 +237,26 @@ def realEstate():
         task_id="extract_zip_file", python_callable=_extract_zip_file
     )
 
-    store_prices = PythonOperator(
-        task_id="store_prices",
-        python_callable=_store_prices,
-        # 這邊是file_path 不是從上一個程式而來 而是自己取名  並丟到_store_prices()
-        op_kwargs={"file_path": '{{ti.xcom_pull(task_ids="extract_zip_file")}}'},
-        # task_ids 後面是字串
-        # op_kwargs={'stock': '{{ ti.xcom_pull(task_ids="get_stock_prices") }}'}
-    )
+    with TaskGroup(group_id="store_group") as store_group:
+        store_prices_taipei = PythonOperator(
+            task_id="store_prices_taipei",
+            python_callable=_store_prices_taipei,
+            # 這邊是file_path 不是從上一個程式而來 而是自己取名  並丟到_store_prices()
+            # op_kwargs={"file_path": '{{ti.xcom_pull(task_ids="extract_zip_file")}}'},
+            # task_ids 後面是字串
+            # op_kwargs={'stock': '{{ ti.xcom_pull(task_ids="get_stock_prices") }}'}
+        )
+        store_prices_new_taipei = PythonOperator(
+            task_id="store_prices_new_taipei",
+            python_callable=_store_prices_new_taipei,
+ 
+        )
+        store_prices_taoyuan = PythonOperator(
+            task_id="store_prices_taoyuan",
+            python_callable=_store_prices_taoyuan,
+ 
+        )
+        store_prices_taipei >> store_prices_new_taipei
 
     format_prices = DockerOperator(
         task_id="format_prices",
@@ -211,7 +285,7 @@ def realEstate():
         get_years_seasons_from_executation_date
         >> crawl_and_download_zip
         >> extract_zip_file
-        >> store_prices
+        >> store_group
         >> format_prices
     )
 

@@ -37,6 +37,9 @@ if __name__ == '__main__':
         access_key = os.environ.get("AWS_ACCESS_KEY_ID")
         secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
         endpoint = os.environ.get("ENDPOINT")
+        postgres_user = os.environ.get("POSTGRES_USER")
+        postgres_pw = os.environ.get("POSTGRES_PASSWORD")
+        # print(f"testing postgres {postgres_user} pw {postgres_pw}")
 
 
         # Create a SparkSession
@@ -56,7 +59,6 @@ if __name__ == '__main__':
 
         # Read a JSON file from an MinIO bucket using the access key, secret key,
         # and endpoint configured above
-
 
         realestate_schema = StructType([
         StructField("鄉鎮市區", StringType(), True),
@@ -102,11 +104,20 @@ if __name__ == '__main__':
         #     "s3a://realestate-market/real_estate1142/a_lvr_land_a.csv",
         #     "s3a://realestate-market/real_estate1143/a_lvr_land_a.csv",
         # ]
-        input_path = "s3a://realestate-market/real_estate*/a_lvr_land_a.csv"
+        input_path = "s3a://realestate-market/real_estate*/{a,f,h}_lvr_land_a.csv"
+
+        # only for taipei city
+        # input_path = "s3a://realestate-market/real_estate*/a_lvr_land_a.csv"
         # input_path = f"s3a://{os.getenv('SPARK_APPLICATION_ARGS')}"
 
         # only for testing
         # input_path="s3a://realestate-market/real_estate1141/a_lvr_land_a.csv"
+
+        # input_path = [
+        #     "s3a://realestate-market/real_estate1142/a_lvr_land_a.csv",
+        #     "s3a://realestate-market/real_estate1142/f_lvr_land_a.csv"
+        # ]
+
         output_path="s3a://realestate-market/formatted/final-version"
 
         # print(f"here is the input_path  {input_path}")
@@ -130,7 +141,7 @@ if __name__ == '__main__':
         )
         # convert ROC year to AD year
         # + could not work   only concat could  work
-        
+
         df = df.withColumn(
             "西元_交易年月日",
             when(

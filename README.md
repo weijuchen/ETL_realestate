@@ -12,8 +12,7 @@
 - ✅ **物件存儲預處理 (MinIO Staging)**: 自動解壓並將原始 CSV 上傳至 S3 相容儲存層（MinIO）。
 - ✅ **分散式處理 (Spark Transformation)**: 利用 Pyspark 進行大規模資料清洗、結構強化與欄位轉換。
 - ✅ **結構化存儲 (PostgreSQL Storage)**: 將轉換後的資料持久化至關聯式資料庫。
-- ✅ **資料分析 (Data Analysis)**: 透過Power BI 分析不動產資料。
-- ⏳ **視覺化儀表板 (Dashboard)**: 支援 Streamlit 資料探索（待實作中 / placeholder）。
+- ✅ **Power BI 資料分析 (Power BI Visualization)**: 資料存儲於 PostgreSQL 後，直接透過 Power BI 進行報表製作與洞察分析。
 
 ### 資料處理細節 | Data Processing Details
 - ✅ **自動單位轉換**: 支援平方公尺與「坪」的自動換算。
@@ -36,7 +35,8 @@ airflow_realEstate/
 │       └── realestate_transform/
 │           └── realestate_transform.py  # Spark 核心轉換邏輯
 ├── streamlit-app/
-│   └── app.py                 # 資料視覺化應用程式 (Placeholder)
+│   └── app.py                 # (已停用) 原 Streamlit 佔位程式
+├── PowerBI/                   # (建議) 存放 Power BI (.pbix) 檔案之目錄
 ├── docker/                    # 基礎設施 Dockerfile 與配置
 ├── include/                   # 自定義輔助函式或靜態檔案
 ├── airflow_settings.yaml      # Airflow 連線與變數配置
@@ -82,18 +82,15 @@ astro dev start
 
 ## 🏗️ 系統架構 | System Architecture
 
-```mermaid
-graph LR
+
     A[MOI Website] -->|Requests| B(Airflow Crawler)
     B -->|Upload Raw| C[MinIO Storage]
     B -->|Trigger Job| D(Spark Cluster)
     D -->|Read & Clean| C
     D -->|JDBC Load| E[(PostgreSQL)]
-    E -->|Query| F[Streamlit Dashboard]
+    E -->|Direct Query| F[Power BI Dashboard]
 
-    style A fill:#f9f,stroke:#333SR
-    style D fill:#6fa,stroke:#333
-    style E fill:#6af,stroke:#333
+  
 ```
 
 ---
@@ -103,5 +100,6 @@ graph LR
 - **Processing**: Apache Spark (PySpark)
 - **Object Storage**: MinIO
 - **Database**: PostgreSQL
+- **Visualization**: Power BI
 - **Language**: Python 3.10+
 - **Infrastructure**: Docker & Docker Compose

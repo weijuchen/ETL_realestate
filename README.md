@@ -56,7 +56,7 @@ git clone <your-repo-url>
 cd airflow_realEstate
 
 # 確保已安裝 Astro CLI
-# https://www.astronomer.io/docs/astro/cli/install-cli
+https://www.astronomer.io/docs/astro/cli/install-cli
 
 
 

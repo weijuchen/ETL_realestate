@@ -51,11 +51,11 @@ airflow_realEstate/
 ### 1. 複製專案與準備環境 | Clone and Setup
 適用windows 10 環境
 
-# 下載專案
+#### 下載專案
 git clone <your-repo-url>
 cd airflow_realEstate
 
-# 確保已安裝 Astro CLI
+#### 確保已安裝 Astro CLI
 https://www.astronomer.io/docs/astro/cli/install-cli
 
 

@@ -17,3 +17,4 @@ docker/jars/*.jar
 
 # 資料目錄
 include/data/
+data/postgres_dw

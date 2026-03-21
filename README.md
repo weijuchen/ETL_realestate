@@ -56,7 +56,8 @@ git clone <your-repo-url>
 cd airflow_realEstate
 
 # 確保已安裝 Astro CLI
-# https://www.astronomer.io/docs/astro/cli/get-started
+# https://www.astronomer.io/docs/astro/cli/install-cli
+
 
 
 ### 2. 配置環境變數 | Configuration
@@ -68,7 +69,21 @@ apache-airflow-providers-docker==4.0.0
 pyspark==3.5.6
 python==3.10.10
 
-### 4. 啟動系統 | Start the Platform
+### 4. 建置必要的 Docker 映像檔
+
+在執行 `astro dev start` 之前,必須先建置以下映像檔:
+```bash
+# 建置 Spark Master
+docker build -t airflow/spark-master ./spark/master
+
+# 建置 Spark Worker
+docker build -t airflow/spark-worker ./spark/worker
+
+# 建置 Real Estate 應用程式
+docker build -t airflow/realestate-app ./spark/notebooks/realestate_transform
+```
+
+### 5. 啟動系統 | Start the Platform
 使用 Astro CLI 啟動所有容器服務（Airflow, Spark, Postgres, MinIO）：
 ```bash
 astro dev start
@@ -82,6 +97,61 @@ astro dev start
 1. 登入 Airflow UI。
 2. 啟動名為 `realEstate` 的 DAG。
 3. 監控任務執行，完成後資料將匯入 PostgreSQL 的 `real_estate_table` 表中。
+
+---
+
+## 🏗️ 系統架構與資料流程 | Architecture & Data Flow
+
+### 1. 系統架構圖 | System Architecture
+本專案採用 **Docker 容器化分層架構**，將各個元件解耦，並由 Airflow 進行全局調度。
+
+```mermaid
+graph TD
+    subgraph "Infrastructure (Docker Compose)"
+        AF[Airflow / Astro CLI]
+        SPK_M[Spark Master]
+        SPK_W[Spark Worker]
+        MIN[MinIO Object Storage]
+        PG[(PostgreSQL Database)]
+    end
+
+    subgraph "External Resources"
+        MOI[Taiwan MOI API/Website]
+        PBI[Power BI Desktop/Service]
+    end
+
+    MOI -->|Crawler Task| AF
+    AF -->|Orchestration| SPK_M
+    AF -->|Read/Write| MIN
+    SPK_M <--> SPK_W
+    SPK_W <-->|PySpark ETL| MIN
+    SPK_W -->|JDBC Write| PG
+    PG <-->|Direct Query| PBI
+
+    style AF fill:#fdf,stroke:#333
+    style SPK_M fill:#6fa,stroke:#333
+    style MIN fill:#6af,stroke:#333
+    style PG fill:#fa6,stroke:#333
+```
+
+### 2. 資料生命週期 | Data Lifecycle (ETL Flow)
+```mermaid
+sequenceDiagram
+    participant MOI as 內政部 (Source)
+    participant AF as Airflow (Task)
+    participant MIN as MinIO (Staging)
+    participant SPK as Spark (Compute)
+    participant PG as Postgres (Storage)
+    participant PBI as Power BI (Analysis)
+
+    AF->>MOI: 請求最新季度 ZIP 檔
+    AF->>MIN: 上傳原始 CSV (Landing Zone)
+    AF->>SPK: 提交 PySpark 作業進行清洗
+    SPK->>MIN: 讀取所有 CSV 檔案
+    Note right of SPK: 資料清洗 / 民國轉西元 / 坪數換算
+    SPK->>PG: JDBC 寫入 real_estate_table
+    PBI->>PG: 進行 Power BI 直連分析
+```
 
 
 

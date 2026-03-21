@@ -272,9 +272,15 @@ def realEstate():
         xcom_all=False,
         mount_tmp_dir=False,
         environment={
-            "AWS_ACCESS_KEY_ID": Variable.get("AWS_ACCESS_KEY_ID"),
-            "AWS_SECRET_ACCESS_KEY": Variable.get("AWS_SECRET_ACCESS_KEY"),
-            "ENDPOINT": Variable.get("ENDPOINT"),
+            "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID"),
+            "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            "ENDPOINT": os.environ.get("ENDPOINT"),
+            "POSTGRES_USER": os.environ.get("POSTGRES_USER"),
+            "POSTGRES_PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+            "POSTGRES_DB": os.environ.get("POSTGRES_DB"),
+            # "AWS_ACCESS_KEY_ID": Variable.get("AWS_ACCESS_KEY_ID"),
+            # "AWS_SECRET_ACCESS_KEY": Variable.get("AWS_SECRET_ACCESS_KEY"),
+            # "ENDPOINT": Variable.get("ENDPOINT"),
             "SPARK_APPLICATION_ARGS": '{{ ti.xcom_pull(task_ids="store_prices") }}',
         },
     )

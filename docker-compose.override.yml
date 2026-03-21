@@ -52,10 +52,11 @@ services:
     container_name: mypostgres
     env_file:
       - .env
-    environment:
+      # environment or env_file could not be used at the same time
+    # environment:
     #   - POSTGRES_USER=${POSTGRES_USER}
     #   - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=mydb
+      # - POSTGRES_DB=mydb
     ports:
       - "5433:5432"
     volumes:
@@ -67,6 +68,8 @@ services:
     image: airflow/spark-master
     build: ./spark/master
     container_name: spark-master
+    env_file:
+      - .env
     ports:
       - "8082:8080"
       - "7077:7077"
@@ -82,6 +85,8 @@ services:
     image: airflow/spark-worker
     build: ./spark/worker
     container_name: spark-worker
+    env_file:
+      - .env
     depends_on:
       - spark-master
     ports:

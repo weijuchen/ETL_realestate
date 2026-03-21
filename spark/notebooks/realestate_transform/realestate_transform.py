@@ -39,7 +39,7 @@ if __name__ == '__main__':
         endpoint = os.environ.get("ENDPOINT")
         postgres_user = os.environ.get("POSTGRES_USER")
         postgres_pw = os.environ.get("POSTGRES_PASSWORD")
-        # print(f"testing postgres {postgres_user} pw {postgres_pw}")
+
 
 
         # Create a SparkSession
@@ -114,8 +114,8 @@ if __name__ == '__main__':
         # input_path="s3a://realestate-market/real_estate1141/a_lvr_land_a.csv"
 
         # input_path = [
-        #     "s3a://realestate-market/real_estate1142/a_lvr_land_a.csv",
-        #     "s3a://realestate-market/real_estate1142/f_lvr_land_a.csv"
+        #     "s3a://realestate-market/real_estate1144/a_lvr_land_a.csv",
+        #     "s3a://realestate-market/real_estate1144/h_lvr_land_a.csv"
         # ]
 
         output_path="s3a://realestate-market/formatted/final-version"
@@ -166,8 +166,10 @@ if __name__ == '__main__':
 
         url = "jdbc:postgresql://mypostgres:5432/mydb"
         properties = {
-            "user": "postgres",     
-            "password": "postgres",
+         
+             "user": postgres_user ,
+     
+             "password":postgres_pw,
             "driver": "org.postgresql.Driver"
         }
 

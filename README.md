@@ -155,4 +155,36 @@ sequenceDiagram
 
 
 
+### 3. ETL 核心管線設計 | Core ETL Pipeline Design
+
+```mermaid
+graph LR
+    %% 第一階段：採集
+    subgraph Step1 ["<b>1. Extract (採集)</b>"]
+        direction LR
+        A["內政部<br/>ZIP/CSV"] --> B["Airflow<br/>Crawler"] --> C[("MinIO<br/>Landing Zone")]
+    end
+
+    %% 第二階段：轉換
+    subgraph Step2 ["<b>2. Transform (核心轉換)</b>"]
+        direction LR
+        D["Spark<br/>分佈式處理"] --> E["<b>資料清洗與加工</b><br/>• 過濾 English Header<br/>• 單位換算 (m2 ➔ 坪)<br/>• 日期格式 (民國 ➔ 西元)<br/>• 縣市/季度來源標註"]
+    end
+
+    %% 第三階段：載入
+    subgraph Step3 ["<b>3. Load (分析)</b>"]
+        direction LR
+        F[("PostgreSQL<br/>Production DB")] --> G["Power BI<br/>視覺化報表"]
+    end
+
+    %% 連結階段
+    Step1 ==> Step2 ==> Step3
+
+    %% 樣式美化
+    style Step1 fill:#fdfdfd,stroke:#999,stroke-width:2px
+    style Step2 fill:#fffdf7,stroke:#d4a017,stroke-width:2px
+    style Step3 fill:#f0f7ff,stroke:#007acc,stroke-width:2px
+    
+    style E text-align:left
+```
 

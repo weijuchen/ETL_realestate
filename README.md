@@ -188,3 +188,50 @@ graph LR
     style E text-align:left
 ```
 
+
+
+### 4. Airflow 工作流設計 | Airflow DAG Workflow
+
+本系統透過 **Apache Airflow** 進行自動化排程與監控，以下為 DAG 的任務依賴關係圖：
+
+```mermaid
+graph TD
+    Start((<b>Start</b>)) --> T1[get_years_seasons<br/>計算邏輯時間與季度]
+    T1 --> T2[crawl_and_download_zip<br/>執行政府網站爬蟲]
+    T2 --> T3[extract_zip_file<br/>自動解壓縮 ZIP 封包]
+    
+    subgraph TG [TaskGroup: store_group 存儲模組]
+        direction TB
+        TG1[store_prices_taipei] --> TG2[store_prices_new_taipei]
+        TG3[store_prices_taoyuan]
+    end
+    
+    T3 --> TG
+    TG --> T4[format_prices<br/>執行 Dockerized Spark 轉換]
+    T4 --> End((<b>End</b>))
+
+    %% 樣式美化
+    style Start fill:#f5f5f5,stroke:#333
+    style End fill:#f5f5f5,stroke:#333
+    style TG fill:#fff9f9,stroke:#e91e63,stroke-dasharray: 5 5
+    style T4 fill:#ff9800,stroke:#333,color:#fff,stroke-width:2px
+```
+
+#### 📅 排程配置說明 | Scheduling Configuration
+| 設定項目 | 內容 | 說明 |
+| :--- | :--- | :--- |
+| **DAG ID** | `realEstate` | 核心不動產 ETL 任務標識 |
+| **Schedule** | `0 4 2 * *` | **每月 2 號凌晨 04:00** 自動觸發 |
+| **Catchup** | `False` | 僅執行當前排程，不補執行歷史任務 |
+| **Max Active Runs** | `1` | 同步僅允許一個實例運行，防止資源競爭 |
+| **Retries** | `1` | 任務失敗後自動重試 1 次 |
+| **Retry Delay** | `5 Seconds` | 失敗後間隔 5 秒進行重試 |
+| **Timeout** | `20 Minutes` | 完整流程超時限制為 20 分鐘 |
+
+
+
+
+
+
+
+
